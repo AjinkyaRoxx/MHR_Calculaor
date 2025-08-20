@@ -14,6 +14,91 @@
   gtag('config', 'G-T9XRB2E8BD');
 </script>
 <!-- End Google Analytics Tag -->
+  
+  <script>
+(function() {
+    'use strict';
+    
+    // Store original functions to detect overrides
+    const originalConsoleLog = console.log;
+    const originalDebugger = window.debugger;
+    
+    // Override console methods
+    console.log = function() {
+        alert('Console access is restricted');
+        return originalConsoleLog.apply(console, arguments);
+    };
+    
+    console.error = console.warn = console.info = console.log;
+    
+    // Disable debugger keyword
+    window.debugger = function() {
+        alert('Debugger is disabled');
+        return originalDebugger;
+    };
+    
+    // Prevent right-click
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        alert('Right-click is disabled');
+        return false;
+    });
+    
+    // Keyboard shortcuts protection
+    document.addEventListener('keydown', function(e) {
+        const disabledKeys = [
+            123, // F12
+            73,  // I key (with modifiers)
+            85,  // U key (with modifiers)
+            67   // C key (with modifiers)
+        ];
+        
+        const key = e.keyCode || e.which;
+        
+        // Check for F12
+        if (key === 123) {
+            e.preventDefault();
+            alert('F12 (Developer Tools) is disabled');
+            return false;
+        }
+        
+        // Check for Ctrl+Shift+I, Ctrl+U, Ctrl+Shift+C, Ctrl+Shift+J
+        if (e.ctrlKey && e.shiftKey && [73, 74, 67].includes(key)) {
+            e.preventDefault();
+            alert('Developer tools shortcut is disabled');
+            return false;
+        }
+        
+        if (e.ctrlKey && key === 85) {
+            e.preventDefault();
+            alert('View source is disabled');
+            return false;
+        }
+    });
+    
+    // Detect devtools opening by checking window size differences
+    let devToolsOpen = false;
+    const checkDevTools = setInterval(function() {
+        const widthDiff = window.outerWidth - window.innerWidth;
+        const heightDiff = window.outerHeight - window.innerHeight;
+        
+        if ((widthDiff > 100 || heightDiff > 100) && !devToolsOpen) {
+            devToolsOpen = true;
+            alert('Developer tools detected. This page may not function properly with devtools open.');
+            // You could redirect or take other action here
+            // document.body.innerHTML = '<h1>Please close developer tools</h1>';
+        } else if (widthDiff < 50 && heightDiff < 50 && devToolsOpen) {
+            devToolsOpen = false;
+        }
+    }, 1000);
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        clearInterval(checkDevTools);
+    });
+    
+})();
+</script>
 
 <meta name="description" content="Interactive Machine Hour Rate calculator with OEE, fixed and variable cost breakdown." />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2030,3 +2115,4 @@ calculate();
 </body>
 
 </html>
+
