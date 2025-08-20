@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Machine Hour Rate (MHR) Calculator</title>
+
+<!-- Google Analytics GA4 Tag: place this high in the head -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-T9XRB2E8BD');
+</script>
+<!-- End Google Analytics Tag -->
+
+<meta name="description" content="Interactive Machine Hour Rate calculator with OEE, fixed and variable cost breakdown." />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<!-- Other libraries -->
+<script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+
+/* Align all Yearly/Monthly dropdowns in grid */
+.grid label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* BASE STYLES */
+:root {
+  --bg: #0b0f1a;
+  --panel: #121a2b;
+  --panel-2: #0f1524;
+  --ink: #e7ecff;
+  --muted: #9fb0ff;
+  --accent: #7aa2ff;
+  --accent-2: #9a7aff;
+  --ok: #4cd57f;
+  --warn: #ffb84d;
+  --bad: #ff6d6d;
+  --glass: rgba(255,255,255,.06);
+  --card-radius: 12px;
+  --gap: 16px;
+  --shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+body {
+  margin: 0;
+  font-family: "Outfit", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(122,162,255,.20), transparent 60%),
+    radial-gradient(1200px 600px at 110% 20%, rgba(154,122,255,.18), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+  background-attachment: fixed;
+  font-size: 14px;
+}
+
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 15px;
+}
+
+/* HEADER STYLES */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(11,15,26,.85), rgba(11,15,26,.35));
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.header-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.header-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--card-radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.header-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.title-card {
+  background: linear-gradient(135deg, rgba(122,162,255,.12), rgba(154,122,255,.08));
+  border-color: rgba(122,162,255,.15);
+  grid-column: 1 / -1;
+}
+
+.title-card h1 {
+  font-size: 22px;
+  margin: 0 0 4px 0;
+  font-weight: 800;
+}
+
+.title-card .subtitle {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.header-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.header-card .big {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 4px 0;
+  color: var(--accent);
+}
+
+.header-card .small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* MAIN CONTENT */
+main {
+  display: grid;
+  grid-template-columns: 450px 300px 300px;
+  gap: var(--gap);
+  align-items: start;
+  margin-top: 20px;
+}
+
+/* CARD STYLES */
+section.card {
+  background: var(--glass);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: var(--gap);
+}
+
+section.card h2 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* TAB STYLES */
+.tabs {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 4px;
+}
+
+.tab {
+  padding: 8px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tab.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  box-shadow: 0 4px 12px rgba(122,162,255,.25);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* INPUT GRID */
+.grid {
+  display: grid;
+  grid-template-columns: 1.8fr 80px 70px;
+  gap: 6px var(--gap);
+  align-items: center;
+}
+
+label {
+  font-size: 13px;
+  color: var(--ink);
+  opacity: .95;
+  line-height: 1.4;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  color: var(--ink);
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  font-size: 13px;
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e7ecff'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+}
+
+.unit {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: .85;
+  text-align: right;
+}
+
+/* BUTTONS */
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: .2px;
+  box-shadow: 0 12px 30px rgba(122,162,255,.35);
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(122,162,255,.45);
+}
+
+button.secondary {
+  background: linear-gradient(135deg, #2a3352, #1b233c);
+  box-shadow: none;
+  border: 1px solid rgba(255,255,255,.08);
+  color: #dfe8ff;
+}
+
+/* KPI STYLES */
+.kpi, .machine-rate-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 8px;
+}
+
+.kpi h3, .machine-rate-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+}
+
+.kpi .big, .machine-rate-card .big {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 6px 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.sep {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,0));
+  margin: 8px 0;
+}
+
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+.bad { color: var(--bad); }
+.right { text-align: right; }
+.small { font-size: 12px; color: var(--muted); }
+
+/* MACHINE NAME INPUT */
+.machine-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--muted);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 0;
+  width: 100%;
+  outline: none;
+}
+
+/* FORMULAS SECTION */
+details {
+  margin-top: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 8px 24px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.05);
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+details[open] {
+  background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+}
+
+summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px 0;
+  outline: none;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 8px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(255,255,255,.1);
+}
+
+/* PRESET FIELD STYLES */
+.preset-field {
+  background-color: rgba(122, 162, 255, 0.15) !important;
+  border: 1px solid rgba(122, 162, 255, 0.3) !important;
+  transition: all 0.3s ease;
+}
+
+.preset-field:hover {
+  background-color: rgba(122, 162, 255, 0.2) !important;
+  border-color: rgba(122, 162, 255, 0.5) !important;
+}
+
+.preset-field:focus {
+  background-color: rgba(122, 162, 255, 0.25) !important;
+  border-color: var(--accent) !important;
+}
+
+.preset-label {
+  position: relative;
+  padding-left: 12px;
+}
+
+.preset-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background-color: var(--accent);
+  border-radius: 2px;
+}
+
+/* RESPONSIVE ADJUSTMENTS */
+@media (max-width: 1200px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+  
+  .wrap {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .header-cards-container {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+  }
+  
+  .title-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-card {
+    min-width: 100%;
+  }
+}
+
+/* COMPACT STYLES */
+.header-cards-container.compact {
+  gap: 8px;
+}
+
+.header-card.compact {
+  padding: 10px 12px;
+  min-height: auto;
+}
+
+.title-card.compact h1 {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.title-card.compact .subtitle {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.header-card.compact h3 {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.header-card.compact .big {
+  font-size: 16px;
+  margin: 2px 0;
+  line-height: 1.2;
+}
+
+.header-card.compact .small {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+/* Adjust the MHR summary card specifically */
+.mhr-summary-card.compact {
+  position: relative; /* Add this to position children absolutely */
+  padding: 10px 12px;
+}
+
+.mhr-summary-card.compact .mhr-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.mhr-summary-card.compact .big {
+  font-size: 16px;
+  margin: 2px 0;
+}
+
+.mhr-summary-card.compact .cost-row {
+  font-size: 10px;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.mhr-summary-card.compact .cost-value {
+  min-width: 40px; /* Reduced from 50px */
+}
+
+/* Move cost breakdown to top right */
+.mhr-summary-card.compact .cost-breakdown {
+  position: absolute;
+  top: 10px; /* Match card padding */
+  right: 12px; /* Match card padding */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* Adjust the main value position */
+.mhr-summary-card.compact .big {
+  margin-top: 18px; /* Make space for the cost breakdown */
+}
+
+/* Adjust the card hover effect to match new size */
+.header-card.compact:hover {
+  transform: translateY(-1px); /* Reduced from -2px */
+}
+
+/* MHR SUMMARY CARD */
+.mhr-summary-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.mhr-summary-card .card-content {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-top: auto;
+}
+
+.mhr-summary-card .cost-breakdown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.mhr-summary-card .cost-row {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mhr-summary-card .cost-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.mhr-summary-card .cost-value {
+  color: var(--accent-2);
+  font-weight: 600;
+  min-width: 50px;
+  text-align: right;
+}
+
+.cost-label::after {
+  content: ":";
+  margin-right: 2px;
+}
+
+
+/* ===== ENHANCED DROPDOWN STYLES ===== */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+  padding: 8px 32px 8px 12px !important;
+  font-size: 13px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23333'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+}
+
+select option {
+  padding: 8px;
+  background: white;
+  color: #333;
+}
+
+select option:hover {
+  background-color: var(--accent) !important;
+  color: white;
+}
+
+label > select.time-period-select {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Special styling for time period dropdowns */
+.time-period-select {
+  min-width: 70px !important;
+  max-width: 90px !important;
+  padding: 6px 8px !important;
+  background-position: right 6px center;
+  width: auto !important;
+}
+
+/* Country/Region dropdown specific styling */
+#region {
+  background-color: rgba(248, 249, 250, 0.9);
+  border: 1px solid #ced4da !important;
+  font-weight: 600;
+  color: #333;
+}
+
+#region option {
+  font-weight: normal;
+}
+
+/* Dark mode dropdowns */
+@media (prefers-color-scheme: dark) {
+  select {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    border-color: #444 !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f0f0f0'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  }
+  
+  select option {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+  }
+  
+  #region {
+    background-color: rgba(42, 42, 42, 0.9);
+    border-color: #555 !important;
+    color: #f0f0f0;
+  }
+}
+
+/* Widen specific dropdowns */
+#region,
+#currency {
+  min-width: 100px !important;
+  width: 100px !important;
+}
+
+/* Add this for a subtle animation on hover */
+.header-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.header-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(115, 153, 2, 0.3), 
+              inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+/* For the title card specifically */
+.title-card:hover {
+  box-shadow: 0 12px 24px rgba(122,162,255,.25), 
+              inset 0 1px 0 rgba(255,255,255,.1);
+}
+
+/* Enhanced Machine Name Input in Header */
+.title-card.compact .machine-name-input {
+  width: 80%;
+  background: rgba(122, 162, 255, 0.15); /* Subtle blue accent background */
+  border: 1px solid rgba(122, 162, 255, 0.3); /* Matching border */
+  color: var(--ink);
+  font-family: "Outfit", sans-serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.title-card.compact .machine-name-input:focus {
+  background: rgba(122, 162, 255, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.2);
+}
+
+.title-card.compact .machine-name-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* Optional glowing effect on focus */
+@keyframes subtle-glow {
+  0% { box-shadow: 0 0 0 0 rgba(122, 162, 255, 0.4); }
+  100% { box-shadow: 0 0 0 4px rgba(122, 162, 255, 0); }
+}
+
+.title-card.compact .machine-name-input:focus {
+  animation: subtle-glow 0.5s ease-out;
+}
+
+/* Adjust spacing in title card to accommodate new input */
+.title-card.compact {
+  padding-bottom: 12px; /* Slightly more padding at bottom */
+}
+
+.title-card.compact .subtitle {
+  margin-bottom: 4px; /* Reduce space before input */
+}
+
+/* Ensure numbers display properly with comma formatting */
+.cost-value, .big, .right, [id^="k"] {
+  font-feature-settings: "tnum"; /* Tabular numbers */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="header-cards-container compact">
+      <!-- Title Card with Machine Name Input -->
+      <div class="header-card title-card compact">
+        <h1>Machine Hour Rate Calculator</h1>
+        <div class="subtitle">OEE-aware cost calculation</div>
+        <input type="text" class="machine-name-input" id="machineNameHeader" value="Enter Machine Name" placeholder="Enter machine name">
+      </div>
+      
+      <!-- Total MHR Card -->
+      <div class="header-card mhr-summary-card compact">
+        <div class="mhr-header">
+          <h3>Total MHR</h3>
+          <div class="cost-breakdown">
+            <div class="cost-row">
+              <span class="cost-label">Fixed:</span>
+              <span class="cost-value" id="hdrFixed">₹0.00</span>
+            </div>
+            <div class="cost-row">
+              <span class="cost-label">Variable:</span>
+              <span class="cost-value" id="hdrVar">₹0.00</span>
+            </div>
+          </div>
+        </div>
+        <div class="big" id="hdrMhr">₹0.00</div>
+      </div>
+      
+      <!-- Other Cards -->
+      <div class="header-card compact">
+        <h3>OEE</h3>
+        <div class="big" id="hdrOee">—</div>
+        <div class="small">Util × Perf × Qual</div>
+      </div>
+      
+      <div class="header-card compact">
+        <h3>Capacity</h3>
+        <div class="big" id="hdrCapUtil">—</div>
+        <div class="small">Utilization Rate</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Add these buttons to your HTML in the actions section -->
+<!--<div class="actions">
+  <button id="reset">Reset Defaults</button>
+  <button class="secondary" id="exportExcel">Export Excel</button>
+  <button class="secondary" id="exportPdf">Export PDF</button>
+  <!-- Add these new buttons -->
+  <!--<button class="secondary" id="importPresets">Import Regional Presets</button>
+  <button class="secondary" id="exportPresets">Export Regional Presets</button>
+  <button class="secondary" id="saveAsPreset">Save Current as Preset</button>
+</div>
+<input type="file" id="presetFileInput" accept=".xlsx,.xls" style="display: none;"> -->
+
+<!-- Add these buttons to your HTML in the actions section -->
+
+<div class="wrap">
+  <main>
+    <!-- INPUT SECTION (WIDER) -->
+    <section class="card">
+      <div class="tabs" id="inputTabs">
+        <button class="tab active" data-tab="general">General</button>
+        <button class="tab" data-tab="capital">Capital</button>
+        <button class="tab" data-tab="maint">Maintenance</button>
+        <button class="tab" data-tab="energy">Energy</button>
+        <button class="tab" data-tab="consum">Consumables</button>
+        <button class="tab" data-tab="people">People</button>
+      </div>
+
+      <!-- GENERAL TAB CONTENT -->
+      <div class="tab-content active" id="general-tab">
+        <h2>General & Time Base</h2>
+        <div class="grid" id="general">
+          <label class="preset-label">Country/Region</label>
+          <select id="region" class="preset-field">
+            <option value="" selected disabled>Region</option>
+            <option value="india">India</option>
+            <option value="usa">USA</option>
+            <option value="europe">Europe</option>
+            <option value="china">China</option>
+          </select>
+          <div class="unit">—</div>
+
+          <label class="preset-label">Currency</label>
+          <select id="currency" class="preset-field">
+            <option value="INR" selected>INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="RMB">RMB (¥)</option>
+            <option value="MXN">MXN (¢)</option>
+
+          </select>
+          <div class="unit">—</div>
+
+          <label class="preset-label">Working days/year</label>
+          <input type="number" id="days" value="300" step="1" min="1" class="region-connected">
+          <div class="unit">days</div>
+
+          <label class="preset-label">Shifts/day</label>
+          <input type="number" id="shifts" value="2" step="1" min="1" class="region-connected">
+          <div class="unit">count</div>
+
+          <label class="preset-label">Hours/shift</label>
+          <input type="number" id="hrsShift" value="8" step="0.25" min="0" class="region-connected">
+          <div class="unit">hrs</div>
+
+          <label>Planned maintenance</label>
+          <input type="number" id="pm" value="8" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label>Setup & changeover</label>
+          <input type="number" id="setup" value="5" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label>Breaks/5S/meetings</label>
+          <input type="number" id="breaks" value="2" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label>Utilization</label>
+          <input type="number" id="util" value="85" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label>Performance</label>
+          <input type="number" id="perf" value="92" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label>Quality (FPY)</label>
+          <input type="number" id="qual" value="98" step="0.5" min="0" max="100">
+          <div class="unit">%</div>
+        </div>
+      </div>
+
+      <!-- CAPITAL TAB CONTENT -->
+      <div class="tab-content" id="capital-tab">
+        <h2>Capital & Space</h2>
+        <div class="grid" id="capital">
+          <label>Machine price (incl. taxes)</label>
+          <input type="number" id="price" value="" step="1000" min="0">
+          <div class="unit" id="price-unit">₹</div>
+
+          <label>Capitalized tooling/fixtures</label>
+          <input type="number" id="tooling" value="" step="1000" min="0">
+          <div class="unit" id="tooling-unit">₹</div>
+
+          <label>Salvage value</label>
+          <input type="number" id="salvage" value="" step="1000" min="0">
+          <div class="unit" id="salvage-unit">₹</div>
+
+          <label>Economic life</label>
+          <input type="number" id="life" value="10" step="1" min="1">
+          <div class="unit">years</div>
+
+          <label>Interest / cost of capital</label>
+          <input type="number" id="interest" value="10" step="0.5" min="0">
+          <div class="unit">%</div>
+
+          <label>Insurance</label>
+          <input type="number" id="insurance" value="0.5" step="0.1" min="0">
+          <div class="unit">% of value</div>
+
+          <label class="preset-label">Rent/Sq.Ft
+            <select id="rentPeriod" class="time-period-select region-connected">
+              <option value="annual">Yearly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
+          <input type="number" id="rent" value="" step="10" min="0" class="region-connected">
+          <div class="unit" id="rent-unit">₹/sq.ft/yr</div>
+
+          <label>Floor area (machine)</label>
+          <input type="number" id="area" value="" step="1" min="0">
+          <div class="unit">sq.ft</div>
+
+          <label>Common area factor</label>
+          <input type="number" id="caf" value="20" step="1" min="0">
+          <div class="unit">%</div>
+        </div>
+      </div>
+
+      <!-- MAINTENANCE TAB CONTENT -->
+      <div class="tab-content" id="maint-tab">
+        <h2>Maintenance & Spares</h2>
+        <div class="grid" id="maint">
+          <label>Maintenance (% of price)</label>
+          <input type="number" id="maintPct" value="3" step="0.5" min="0">
+          <div class="unit">%</div>
+
+          <label>Spares & repairs
+            <select id="sparesPeriod" class="time-period-select">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="spares" value="" step="100" min="0">
+          <div class="unit" id="spares-unit">₹/yr</div>
+        </div>
+      </div>
+
+      <!-- ENERGY TAB CONTENT -->
+      <div class="tab-content" id="energy-tab">
+        <h2>Energy & Utilities</h2>
+        <div class="grid" id="energy">
+          <label>Connected load</label>
+          <input type="number" id="kw" value="" step="0.1" min="0">
+          <div class="unit">kW</div>
+
+          <label>Load factor</label>
+          <input type="number" id="lf" value="70" step="1" min="0" max="100">
+          <div class="unit">%</div>
+
+          <label class="preset-label">Power tariff</label>
+          <input type="number" id="tariff" value="" step="0.1" min="0" class="region-connected">
+          <div class="unit" id="tariff-unit">₹/kWh</div>
+
+          <label>Compressed air flow</label>
+          <input type="number" id="air" value="20" step="0.1" min="0">
+          <div class="unit">Nm³/hr</div>
+
+          <label>Compressed air tariff</label>
+          <input type="number" id="airRate" value="" step="0.1" min="0">
+          <div class="unit" id="airRate-unit">₹/Nm³</div>
+
+          <label>Cooling/Chiller (kWh eq.)</label>
+          <input type="number" id="coolKwh" value="2" step="0.1" min="0">
+          <div class="unit">kWh/hr</div>
+
+          <label>Other utilities
+            <select id="otherUtilPeriod" class="time-period-select">
+              <option value="hourly">Hourly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <input type="number" id="otherUtil" value="" step="1" min="0">
+          <div class="unit" id="otherUtil-unit">₹/hr</div>
+        </div>
+      </div>
+
+      <!-- CONSUMABLES TAB CONTENT -->
+      <div class="tab-content" id="consum-tab">
+        <h2>Consumables & Tooling</h2>
+        <div class="grid" id="consum">
+          <label>Cutting tools/inserts
+            <select id="toolsPeriod" class="time-period-select">
+              <option value="hourly">Hourly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <input type="number" id="tools" value="" step="1" min="0">
+          <div class="unit" id="tools-unit">₹/hr</div>
+
+          <label>Coolant/fluids
+            <select id="coolantPeriod" class="time-period-select">
+              <option value="hourly">Hourly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <input type="number" id="coolant" value="" step="1" min="0">
+          <div class="unit" id="coolant-unit">₹/hr</div>
+
+          <label>Shop supplies
+            <select id="suppliesPeriod" class="time-period-select">
+              <option value="hourly">Hourly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <input type="number" id="supplies" value="" step="1" min="0">
+          <div class="unit" id="supplies-unit">₹/hr</div>
+        </div>
+      </div>
+
+      <!-- PEOPLE TAB CONTENT -->
+      <div class="tab-content" id="people-tab">
+        <h2>People & Overheads</h2>
+        <div class="grid" id="people">
+          <label>Direct operator count</label>
+          <input type="number" id="ops" value="1" step="0.1" min="0">
+          <div class="unit">heads</div>
+
+          <label class="preset-label">Operator cost
+            <select id="opsCostPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="opsCost" value="" step="1000" min="0" class="region-connected">
+          <div class="unit" id="opsCost-unit">₹/yr</div>
+
+          <label>Helper count</label>
+          <input type="number" id="help" value="0.5" step="0.1" min="0">
+          <div class="unit">heads</div>
+
+          <label class="preset-label">Helper cost
+            <select id="helpCostPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="helpCost" value="" step="1000" min="0" class="region-connected">
+          <div class="unit" id="helpCost-unit">₹/yr</div>
+
+          <label class="preset-label">Supervisor allocation
+            <select id="supAllocPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="supAlloc" value="" step="1000" min="0" class="region-connected">
+          <div class="unit" id="supAlloc-unit">₹/yr</div>
+
+          <label class="preset-label">QA/Mat handling
+            <select id="qaAllocPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="qaAlloc" value="" step="1000" min="0" class="region-connected">
+          <div class="unit" id="qaAlloc-unit">₹/yr</div>
+
+          <label class="preset-label">Factory admin OH
+            <select id="adminOHPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="adminOH" value="" step="1000" min="0" class="region-connected">
+          <div class="unit" id="adminOH-unit">₹/yr</div>
+
+          <label class="preset-label">IT / ERP
+            <select id="itPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="it" value="" step="500" min="0" class="region-connected">
+          <div class="unit" id="it-unit">₹/yr</div>
+
+          <label class="preset-label">Safety / ESG
+            <select id="safetyPeriod" class="time-period-select region-connected">
+              <option value="annual">Annual</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+          <input type="number" id="safety" value="" step="500" min="0" class="region-connected">
+          <div class="unit" id="safety-unit">₹/yr</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="reset">Reset Defaults</button>
+        <button class="secondary" id="exportExcel">Export Excel</button>
+        <button class="secondary" id="exportPdf">Export PDF</button>
+          <!-- Add these new buttons -->
+        <button class="secondary" id="importPresets">Import Regional Presets</button>
+        <button class="secondary" id="exportPresets">Export Regional Presets</button>
+        <button class="secondary" id="saveAsPreset">Save Current as Preset</button>
+      </div>
+      <input type="file" id="presetFileInput" accept=".xlsx,.xls" style="display: none;">
+
+      <!-- FORMULAS SECTION -->
+      <details>
+        <summary>Formulas used</summary>
+        <div class="hint">
+          <strong>Time Calculations:</strong><br/>
+          • Calendar Hours = Working Days × Shifts/Day × Hours/Shift<br/>
+          • Net Calendar = Calendar Hours × (1 − Planned Maintenance %)<br/>
+          • Available Hours = Net Calendar × (1 − Setup %) × (1 − Breaks %)<br/>
+          • Runtime Hours = Available Hours × Utilization %<br/>
+          • Effective Good Hours (EGH) = Runtime Hours × Performance % × Quality %<br/><br/>
+          
+          <strong>Fixed Costs (Annual):</strong><br/>
+          • Depreciation = (Machine Price + Tooling - Salvage Value) ÷ Economic Life<br/>
+          • Interest = (Machine Price + Tooling + Salvage Value) ÷ 2 × Interest Rate<br/>
+          • Insurance = (Machine Price + Tooling) × Insurance Rate<br/>
+          • Space = Annual Rent × Floor Area × (1 + Common Area Factor)<br/>
+          • Maintenance = Machine Price × Maintenance %<br/>
+          • People = (Operators × Cost) + (Helpers × Cost) + Supervisor + QA<br/>
+          • Overheads = Admin + IT + Safety<br/><br/>
+          
+          <strong>Variable Costs (Hourly):</strong><br/>
+          • Power = Connected Load × Load Factor × Power Tariff<br/>
+          • Compressed Air = Air Flow × Air Tariff<br/>
+          • Cooling = Cooling kWh Equivalent × Power Tariff<br/><br/>
+          
+          <strong>Machine Hour Rate:</strong><br/>
+          • Fixed Cost per EGH = Annual Fixed Cost ÷ EGH<br/>
+          • Variable Cost per EGH = (Variable Cost per Hour × Runtime Hours) ÷ EGH<br/>
+          • Total MHR = Fixed Cost per EGH + Variable Cost per EGH
+        </div>
+      </details>
+    </section>
+
+    <!-- COST BREAKDOWN SECTION -->
+    <section class="card">
+      <h2>Cost Breakdown</h2>
+      <div class="kpi">
+        <h3>Fixed Costs (Annual)</h3>
+        <div class="row"><div>Depreciation</div><div class="right" id="kDep">—</div></div>
+        <div class="row"><div>Interest</div><div class="right" id="kInt">—</div></div>
+        <div class="row"><div>Insurance</div><div class="right" id="kIns">—</div></div>
+        <div class="row"><div>Space</div><div class="right" id="kSpace">—</div></div>
+        <div class="row"><div>Maintenance</div><div class="right" id="kMaint">—</div></div>
+        <div class="row"><div>Spares & Repairs</div><div class="right" id="kSpares">—</div></div>
+        <div class="row"><div>People</div><div class="right" id="kPeople">—</div></div>
+        <div class="row"><div>Overheads</div><div class="right" id="kOH">—</div></div>
+      </div>
+
+      <div class="kpi">
+        <h3>Variable Costs (Hourly)</h3>
+        <div class="row"><div>Power</div><div class="right" id="kPower">—</div></div>
+        <div class="row"><div>Compressed Air</div><div class="right" id="kAir">—</div></div>
+        <div class="row"><div>Cooling</div><div class="right" id="kCool">—</div></div>
+        <div class="row"><div>Other Utilities</div><div class="right" id="kOtherUtil">—</div></div>
+        <div class="row"><div>Tools</div><div class="right" id="kTools">—</div></div>
+        <div class="row"><div>Coolant</div><div class="right" id="kCoolant">—</div></div>
+        <div class="row"><div>Shop Supplies</div><div class="right" id="kSupplies">—</div></div>
+      </div>
+
+      <div class="kpi">
+        <h3>Time Calculations</h3>
+        <div class="row"><div>Calendar Hours</div><div class="right" id="kCalHrs">—</div></div>
+        <div class="row"><div>Net Calendar Hours</div><div class="right" id="kNetCal">—</div></div>
+        <div class="row"><div>Available Hours</div><div class="right" id="kAvail">—</div></div>
+        <div class="row"><div>Runtime Hours</div><div class="right" id="kRuntime">—</div></div>
+        <div class="row"><div>Effective Good Hours</div><div class="right" id="kEGH">—</div></div>
+      </div>
+
+      <!-- Remove this whole card
+      <div class="machine-rate-card">
+        <input type="text" class="machine-name-input" id="machineName" value="Machine 1" placeholder="Machine name">
+        <div class="big" id="mhr">₹0.00</div>
+        <div class="small">Total Machine Hour Rate</div>
+        <div class="sep"></div>
+        <div class="row"><div>Fixed Cost Component</div><div class="right" id="mhrFixed">₹0.00</div></div>
+        <div class="row"><div>Variable Cost Component</div><div class="right" id="mhrVar">₹0.00</div></div>
+      </div> -->
+    </section> 
+
+    <!-- OEE & UTILIZATION SECTION -->
+    <section class="card">
+      <h2>OEE & Utilization</h2>
+      <div class="kpi">
+        <h3>Overall Equipment Effectiveness</h3>
+        <div class="big" id="oee">—</div>
+        <div class="small">(Utilization × Performance × Quality)</div>
+        <div class="sep"></div>
+        <div class="row"><div>Utilization</div><div class="right" id="oeeUtil">—</div></div>
+        <div class="row"><div>Performance</div><div class="right" id="oeePerf">—</div></div>
+        <div class="row"><div>Quality</div><div class="right" id="oeeQual">—</div></div>
+      </div>
+
+      <div class="kpi">
+        <h3>Capacity Utilization</h3>
+        <div class="big" id="capUtil">—</div>
+        <div class="small">(Effective vs Calendar Hours)</div>
+        <div class="sep"></div>
+        <div class="row"><div>Calendar Hours</div><div class="right" id="capCal">—</div></div>
+        <div class="row"><div>Effective Hours</div><div class="right" id="capEff">—</div></div>
+      </div>
+
+      <div class="kpi">
+        <h3>Cost Distribution</h3>
+        <div class="row"><div>Fixed Costs</div><div class="right" id="costFixed">—</div></div>
+        <div class="row"><div>Variable Costs</div><div class="right" id="costVar">—</div></div>
+        <div class="sep"></div>
+        <div class="row"><div>Capital Costs</div><div class="right" id="costCap">—</div></div>
+        <div class="row"><div>Energy Costs</div><div class="right" id="costEnergy">—</div></div>
+        <div class="row"><div>Labor Costs</div><div class="right" id="costLabor">—</div></div>
+        <div class="row"><div>Other Costs</div><div class="right" id="costOther">—</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// DOM Elements
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+const resetBtn = document.getElementById('reset');
+const exportExcelBtn = document.getElementById('exportExcel');
+const exportPdfBtn = document.getElementById('exportPdf');
+const regionSelect = document.getElementById('region');
+const currencySelect = document.getElementById('currency');
+// DOM Elements - Add these to your existing code
+const importPresetsBtn = document.getElementById('importPresets');
+const exportPresetsBtn = document.getElementById('exportPresets');
+const saveAsPresetBtn = document.getElementById('saveAsPreset');
+const presetFileInput = document.getElementById('presetFileInput');
+
+// Tab switching
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabId = tab.getAttribute('data-tab');
+    
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.getElementById(`${tabId}-tab`).classList.add('active');
+  });
+});
+
+// Region presets with Power Tariff rates
+const regionPresets = {
+  india: {
+    currency: 'INR',
+    days: 300,
+    shifts: 2,
+    hrsShift: 8,
+    rent: 800,
+    rentPeriod: 'annual',
+    tariff: 9, // Power Tariff in INR/kWh
+    opsCost: 250,
+    opsCostPeriod: 'hourly',
+    helpCost: 125,
+    helpCostPeriod: 'hourly',
+    supAlloc: 0,
+    supAllocPeriod: 'annual',
+    qaAlloc: 0,
+    qaAllocPeriod: 'annual',
+    adminOH: 0,
+    adminOHPeriod: 'annual',
+    it: 0,
+    itPeriod: 'annual',
+    safety: 0,
+    safetyPeriod: 'annual',
+    displayName: 'India'
+  },
+  usa: {
+    currency: 'USD',
+    days: 250,
+    shifts: 1,
+    hrsShift: 8,
+    rent: 12,
+    rentPeriod: 'monthly',
+    tariff: 0.15, // Power Tariff in USD/kWh
+    opsCost: 25,
+    opsCostPeriod: 'hourly',
+    helpCost: 18,
+    helpCostPeriod: 'hourly',
+    supAlloc: 0,
+    supAllocPeriod: 'annual',
+    qaAlloc: 0,
+    qaAllocPeriod: 'annual',
+    adminOH: 0,
+    adminOHPeriod: 'annual',
+    it: 0,
+    itPeriod: 'annual',
+    safety: 0,
+    safetyPeriod: 'annual',
+    displayName: 'USA'
+  },
+  europe: {
+    currency: 'EUR',
+    days: 220,
+    shifts: 1,
+    hrsShift: 7.5,
+    rent: 15,
+    rentPeriod: 'monthly',
+    tariff: 0.25, // Power Tariff in EUR/kWh
+    opsCost: 28,
+    opsCostPeriod: 'hourly',
+    helpCost: 17,
+    helpCostPeriod: 'hourly',
+    supAlloc: 0,
+    supAllocPeriod: 'annual',
+    qaAlloc: 0,
+    qaAllocPeriod: 'annual',
+    adminOH: 0,
+    adminOHPeriod: 'annual',
+    it: 0,
+    itPeriod: 'annual',
+    safety: 0,
+    safetyPeriod: 'annual',
+    displayName: 'Europe'
+  },
+  china: {
+    currency: 'CNY',
+    days: 300,
+    shifts: 2,
+    hrsShift: 10,
+    rent: 40,
+    rentPeriod: 'monthly',
+    tariff: 0.8, // Power Tariff in CNY/kWh
+    opsCost: 45,
+    opsCostPeriod: 'hourly',
+    helpCost: 30,
+    helpCostPeriod: 'hourly',
+    supAlloc: 0,
+    supAllocPeriod: 'monthly',
+    qaAlloc: 0,
+    qaAllocPeriod: 'monthly',
+    adminOH: 0,
+    adminOHPeriod: 'monthly',
+    it: 0,
+    itPeriod: 'monthly',
+    safety: 0,
+    safetyPeriod: 'monthly',
+    displayName: 'China'
+  }
+};
+
+// Initialize presets from localStorage or use defaults
+function initializePresets() {
+  const savedPresets = localStorage.getItem('regionalPresets');
+  if (savedPresets) {
+    // Merge saved presets with defaults (saved ones take precedence)
+    const customPresets = JSON.parse(savedPresets);
+    Object.assign(regionPresets, customPresets);
+  }
+  updateRegionDropdown();
+}
+
+// Function to update the region dropdown with available options
+function updateRegionDropdown() {
+  const regionSelect = document.getElementById('region');
+  
+  // Clear existing options except the first one
+  while (regionSelect.options.length > 1) {
+    regionSelect.remove(1);
+  }
+  
+  // Add regions from the regionPresets
+  Object.keys(regionPresets).sort().forEach(regionKey => {
+    const preset = regionPresets[regionKey];
+    const option = document.createElement('option');
+    option.value = regionKey;
+    // Use displayName if available, otherwise capitalize the first letter
+    option.textContent = preset.displayName || 
+                        (regionKey.charAt(0).toUpperCase() + regionKey.slice(1));
+    regionSelect.appendChild(option);
+  });
+}
+
+// Add this function to handle Excel file import
+function importRegionalPresetsFromExcel(file) {
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Assuming the first sheet contains the regional presets
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Process the Excel data and update regionPresets
+      const importedCount = processExcelData(jsonData);
+      
+      // Save to localStorage
+      localStorage.setItem('regionalPresets', JSON.stringify(regionPresets));
+      
+      alert(`Successfully imported ${importedCount} regional presets!`);
+      
+      // Update the region dropdown with new options
+      updateRegionDropdown();
+      
+    } catch (error) {
+      console.error('Error importing presets:', error);
+      alert('Error importing presets. Please check the Excel file format.');
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+}
+
+// Function to process Excel data and update regionPresets
+function processExcelData(excelData) {
+  let importedCount = 0;
+  
+  // Skip the header row (first row)
+  for (let i = 1; i < excelData.length; i++) {
+    const row = excelData[i];
+    if (row && row.length >= 21) { // Ensure we have enough columns and row exists
+      const regionName = String(row[0]).trim(); // Keep original casing
+      
+      if (regionName) { // Ensure region name is not empty
+        // Use the original name as the key but lowercase for consistency
+        const regionKey = regionName.toLowerCase().replace(/\s+/g, '_');
+        
+        // Update or add the region preset
+        regionPresets[regionKey] = {
+          currency: String(row[1] || 'INR'),
+          days: parseFloat(row[2]) || 0,
+          shifts: parseFloat(row[3]) || 0,
+          hrsShift: parseFloat(row[4]) || 0,
+          rent: parseFloat(row[5]) || 0,
+          rentPeriod: String(row[6] || 'annual'),
+          opsCost: parseFloat(row[7]) || 0,
+          opsCostPeriod: String(row[8] || 'annual'),
+          helpCost: parseFloat(row[9]) || 0,
+          helpCostPeriod: String(row[10] || 'annual'),
+          supAlloc: parseFloat(row[11]) || 0,
+          supAllocPeriod: String(row[12] || 'annual'),
+          qaAlloc: parseFloat(row[13]) || 0,
+          qaAllocPeriod: String(row[14] || 'annual'),
+          adminOH: parseFloat(row[15]) || 0,
+          adminOHPeriod: String(row[16] || 'annual'),
+          it: parseFloat(row[17]) || 0,
+          itPeriod: String(row[18] || 'annual'),
+          safety: parseFloat(row[19]) || 0,
+          safetyPeriod: String(row[20] || 'annual'),
+          // Store the display name separately
+          displayName: regionName
+        };
+        importedCount++;
+      }
+    }
+  }
+  
+  return importedCount;
+}
+
+// Add export functionality for regional presets
+function exportRegionalPresetsToExcel() {
+  const wb = XLSX.utils.book_new();
+  
+  // Prepare data for export
+  const data = [
+    ['Region', 'Currency', 'Days', 'Shifts', 'HrsShift', 'Rent', 'RentPeriod', 
+     'OpsCost', 'OpsCostPeriod', 'HelpCost', 'HelpCostPeriod', 'SupAlloc', 
+     'SupAllocPeriod', 'QaAlloc', 'QaAllocPeriod', 'AdminOH', 'AdminOHPeriod', 
+     'IT', 'ITPeriod', 'Safety', 'SafetyPeriod']
+  ];
+  
+  // Add each region's data
+  Object.keys(regionPresets).sort().forEach(regionKey => {
+    const preset = regionPresets[regionKey];
+    data.push([
+      preset.displayName || regionKey, // Use displayName if available
+      preset.currency,
+      preset.days,
+      preset.shifts,
+      preset.hrsShift,
+      preset.rent,
+      preset.rentPeriod,
+      preset.opsCost,
+      preset.opsCostPeriod,
+      preset.helpCost,
+      preset.helpCostPeriod,
+      preset.supAlloc,
+      preset.supAllocPeriod,
+      preset.qaAlloc,
+      preset.qaAllocPeriod,
+      preset.adminOH,
+      preset.adminOHPeriod,
+      preset.it,
+      preset.itPeriod,
+      preset.safety,
+      preset.safetyPeriod
+    ]);
+  });
+  
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'Regional Presets');
+  XLSX.writeFile(wb, 'regional_presets.xlsx');
+}
+
+// Function to save current settings as a new preset
+function saveCurrentAsPreset() {
+  const regionName = prompt('Enter a name for this regional preset:');
+  if (!regionName) return;
+  
+  const presetKey = regionName.toLowerCase().trim().replace(/\s+/g, '_');
+  
+  // Create preset from current values
+  regionPresets[presetKey] = {
+    currency: document.getElementById('currency').value,
+    days: parseFloat(document.getElementById('days').value),
+    shifts: parseFloat(document.getElementById('shifts').value),
+    hrsShift: parseFloat(document.getElementById('hrsShift').value),
+    rent: parseFloat(document.getElementById('rent').value),
+    rentPeriod: document.getElementById('rentPeriod').value,
+    opsCost: parseFloat(document.getElementById('opsCost').value),
+    opsCostPeriod: document.getElementById('opsCostPeriod').value,
+    helpCost: parseFloat(document.getElementById('helpCost').value),
+    helpCostPeriod: document.getElementById('helpCostPeriod').value,
+    supAlloc: parseFloat(document.getElementById('supAlloc').value),
+    supAllocPeriod: document.getElementById('supAllocPeriod').value,
+    qaAlloc: parseFloat(document.getElementById('qaAlloc').value),
+    qaAllocPeriod: document.getElementById('qaAllocPeriod').value,
+    adminOH: parseFloat(document.getElementById('adminOH').value),
+    adminOHPeriod: document.getElementById('adminOHPeriod').value,
+    it: parseFloat(document.getElementById('it').value),
+    itPeriod: document.getElementById('itPeriod').value,
+    safety: parseFloat(document.getElementById('safety').value),
+    safetyPeriod: document.getElementById('safetyPeriod').value,
+    // Store the display name
+    displayName: regionName
+  };
+  
+  // Save to localStorage
+  localStorage.setItem('regionalPresets', JSON.stringify(regionPresets));
+  
+  // Update dropdown
+  updateRegionDropdown();
+  
+  alert(`Preset "${regionName}" saved successfully!`);
+}
+
+// Add event listeners for the new functionality
+importPresetsBtn.addEventListener('click', function() {
+  presetFileInput.click();
+});
+
+presetFileInput.addEventListener('change', function(e) {
+  if (e.target.files.length > 0) {
+    importRegionalPresetsFromExcel(e.target.files[0]);
+  }
+});
+
+exportPresetsBtn.addEventListener('click', exportRegionalPresetsToExcel);
+saveAsPresetBtn.addEventListener('click', saveCurrentAsPreset);
+
+// Initialize presets when the page loads
+initializePresets();
+
+
+// Currency symbols
+const currencySymbols = {
+  INR: '₹',
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  RMB: '¥',
+  MXN: '¢'
+};
+
+// Update currency units
+function updateCurrencyUnits() {
+  const currency = currencySelect.value;
+  const symbol = currencySymbols[currency];
+  
+  document.querySelectorAll('[id$="-unit"]').forEach(el => {
+    const id = el.id;
+    if (id.includes('price') || id.includes('tooling') || id.includes('salvage') || 
+        id.includes('spares') || id.includes('opsCost') || id.includes('helpCost') || 
+        id.includes('supAlloc') || id.includes('qaAlloc') || id.includes('adminOH') || 
+        id.includes('it') || id.includes('safety')) {
+      el.textContent = `${symbol}${id.includes('rent') ? '/sq.ft/' : id.includes('tariff') ? '/kWh' : id.includes('airRate') ? '/Nm³' : id.includes('tools') || id.includes('coolant') || id.includes('supplies') || id.includes('otherUtil') ? '/hr' : id.includes('rentPeriod') && document.getElementById('rentPeriod').value === 'monthly' ? '/sq.ft/mo' : '/yr'}`;
+    }
+  });
+}
+
+// Region change handler
+regionSelect.addEventListener('change', () => {
+  const region = regionSelect.value;
+  const preset = regionPresets[region];
+  
+  if (preset) {
+    currencySelect.value = preset.currency;
+    document.getElementById('days').value = preset.days;
+    document.getElementById('shifts').value = preset.shifts;
+    document.getElementById('hrsShift').value = preset.hrsShift;
+    document.getElementById('rent').value = preset.rent;
+    document.getElementById('rentPeriod').value = preset.rentPeriod;
+    document.getElementById('tariff').value = preset.tariff; // Add this line
+    document.getElementById('opsCost').value = preset.opsCost;
+    document.getElementById('opsCostPeriod').value = preset.opsCostPeriod;
+    document.getElementById('helpCost').value = preset.helpCost;
+    document.getElementById('helpCostPeriod').value = preset.helpCostPeriod;
+    document.getElementById('supAlloc').value = preset.supAlloc;
+    document.getElementById('supAllocPeriod').value = preset.supAllocPeriod;
+    document.getElementById('qaAlloc').value = preset.qaAlloc;
+    document.getElementById('qaAllocPeriod').value = preset.qaAllocPeriod;
+    document.getElementById('adminOH').value = preset.adminOH;
+    document.getElementById('adminOHPeriod').value = preset.adminOHPeriod;
+    document.getElementById('it').value = preset.it;
+    document.getElementById('itPeriod').value = preset.itPeriod;
+    document.getElementById('safety').value = preset.safety;
+    document.getElementById('safetyPeriod').value = preset.safetyPeriod;
+    
+    updateCurrencyUnits();
+    calculate();
+  }
+});
+
+// Currency change handler
+currencySelect.addEventListener('change', () => {
+  updateCurrencyUnits();
+  calculate();
+});
+
+// Reset to defaults
+resetBtn.addEventListener('click', () => {
+  if (confirm('Reset all values to defaults?')) {
+    regionSelect.value = '';
+    currencySelect.value = 'INR';
+    
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+      input.value = input.defaultValue;
+    });
+    
+    document.querySelectorAll('select').forEach(select => {
+      if (select.id !== 'region' && select.id !== 'currency') {
+        select.value = select.querySelector('option').value;
+      }
+    });
+    
+    updateCurrencyUnits();
+    calculate();
+  }
+});
+
+// Export to Excel
+exportExcelBtn.addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ['Parameter', 'Value', 'Unit'],
+    ['Machine Name', document.getElementById('machineNameHeader').value, ''], // Updated to use header field
+    ['Country/Region', document.getElementById('region').value || '—', ''],
+    ['Currency', document.getElementById('currency').value, ''],
+    ['Working days/year', document.getElementById('days').value, 'days'],
+    ['Shifts/day', document.getElementById('shifts').value, 'count'],
+    ['Hours/shift', document.getElementById('hrsShift').value, 'hrs'],
+    ['Planned maintenance', document.getElementById('pm').value, '%'],
+    ['Setup & changeover', document.getElementById('setup').value, '%'],
+    ['Breaks/5S/meetings', document.getElementById('breaks').value, '%'],
+    ['Utilization', document.getElementById('util').value, '%'],
+    ['Performance', document.getElementById('perf').value, '%'],
+    ['Quality (FPY)', document.getElementById('qual').value, '%'],
+    ['Machine price', document.getElementById('price').value, currencySelect.value],
+    ['Tooling/fixtures', document.getElementById('tooling').value, currencySelect.value],
+    ['Salvage value', document.getElementById('salvage').value, currencySelect.value],
+    ['Economic life', document.getElementById('life').value, 'years'],
+    ['Interest rate', document.getElementById('interest').value, '%'],
+    ['Insurance rate', document.getElementById('insurance').value, '%'],
+    ['Rent', document.getElementById('rent').value, `${currencySelect.value}/${document.getElementById('rentPeriod').value === 'monthly' ? 'sq.ft/mo' : 'sq.ft/yr'}`],
+    ['Floor area', document.getElementById('area').value, 'sq.ft'],
+    ['Common area factor', document.getElementById('caf').value, '%'],
+    ['Maintenance %', document.getElementById('maintPct').value, '%'],
+    ['Spares & repairs', document.getElementById('spares').value, `${currencySelect.value}/${document.getElementById('sparesPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['Connected load', document.getElementById('kw').value, 'kW'],
+    ['Load factor', document.getElementById('lf').value, '%'],
+    ['Power tariff', document.getElementById('tariff').value, `${currencySelect.value}/kWh`],
+    ['Compressed air flow', document.getElementById('air').value, 'Nm³/hr'],
+    ['Compressed air tariff', document.getElementById('airRate').value, `${currencySelect.value}/Nm³`],
+    ['Cooling/Chiller', document.getElementById('coolKwh').value, 'kWh/hr'],
+    ['Other utilities', document.getElementById('otherUtil').value, `${currencySelect.value}/${document.getElementById('otherUtilPeriod').value === 'annual' ? 'yr' : 'hr'}`],
+    ['Cutting tools/inserts', document.getElementById('tools').value, `${currencySelect.value}/${document.getElementById('toolsPeriod').value === 'annual' ? 'yr' : 'hr'}`],
+    ['Coolant/fluids', document.getElementById('coolant').value, `${currencySelect.value}/${document.getElementById('coolantPeriod').value === 'annual' ? 'yr' : 'hr'}`],
+    ['Shop supplies', document.getElementById('supplies').value, `${currencySelect.value}/${document.getElementById('suppliesPeriod').value === 'annual' ? 'yr' : 'hr'}`],
+    ['Direct operator count', document.getElementById('ops').value, 'heads'],
+    ['Operator cost', document.getElementById('opsCost').value, `${currencySelect.value}/${document.getElementById('opsCostPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['Helper count', document.getElementById('help').value, 'heads'],
+    ['Helper cost', document.getElementById('helpCost').value, `${currencySelect.value}/${document.getElementById('helpCostPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['Supervisor allocation', document.getElementById('supAlloc').value, `${currencySelect.value}/${document.getElementById('supAllocPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['QA/Mat handling', document.getElementById('qaAlloc').value, `${currencySelect.value}/${document.getElementById('qaAllocPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['Factory admin OH', document.getElementById('adminOH').value, `${currencySelect.value}/${document.getElementById('adminOHPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['IT / ERP', document.getElementById('it').value, `${currencySelect.value}/${document.getElementById('itPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['Safety / ESG', document.getElementById('safety').value, `${currencySelect.value}/${document.getElementById('safetyPeriod').value === 'hourly' ? 'hr' : 'yr'}`],
+    ['', '', ''],
+    ['Result', 'Value', 'Unit'],
+    ['Total Machine Hour Rate', document.getElementById('hdrMhr').textContent, ''], // Updated to use header value
+    ['Fixed Cost Component', document.getElementById('hdrFixed').textContent, ''], // Updated to use header value
+    ['Variable Cost Component', document.getElementById('hdrVar').textContent, ''], // Updated to use header value
+    ['OEE', document.getElementById('oee').textContent, '%'],
+    ['Capacity Utilization', document.getElementById('capUtil').textContent, '%']
+  ];
+  
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'MHR Calculation');
+  XLSX.writeFile(wb, 'machine_hour_rate.xlsx');
+});
+
+// Export to PDF
+exportPdfBtn.addEventListener('click', () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  doc.setFontSize(18);
+  doc.text('Machine Hour Rate Calculator', 105, 15, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text(`Machine Name: ${document.getElementById('machineNameHeader').value}`, 14, 25); // Updated to use header field
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 32);
+  
+  let y = 55;
+  doc.setFontSize(14);
+  doc.text('Input Parameters', 14, 45);
+  doc.setFontSize(10);
+  
+  doc.text('General & Time Base:', 14, y);
+  y += 7;
+  doc.text(`Country/Region: ${document.getElementById('region').value || '—'}`, 20, y);
+  y += 7;
+  doc.text(`Currency: ${document.getElementById('currency').value}`, 20, y);
+  y += 7;
+  doc.text(`Working days/year: ${document.getElementById('days').value} days`, 20, y);
+  y += 7;
+  doc.text(`Shifts/day: ${document.getElementById('shifts').value}`, 20, y);
+  y += 7;
+  doc.text(`Hours/shift: ${document.getElementById('hrsShift').value} hrs`, 20, y);
+  y += 7;
+  doc.text(`Planned maintenance: ${document.getElementById('pm').value}%`, 20, y);
+  y += 7;
+  doc.text(`Setup & changeover: ${document.getElementById('setup').value}%`, 20, y);
+  y += 7;
+  doc.text(`Breaks/5S/meetings: ${document.getElementById('breaks').value}%`, 20, y);
+  y += 7;
+  doc.text(`Utilization: ${document.getElementById('util').value}%`, 20, y);
+  y += 7;
+  doc.text(`Performance: ${document.getElementById('perf').value}%`, 20, y);
+  y += 7;
+  doc.text(`Quality (FPY): ${document.getElementById('qual').value}%`, 20, y);
+  
+  y += 10;
+  doc.text('Capital & Space:', 14, y);
+  y += 7;
+  doc.text(`Machine price: ${document.getElementById('price').value} ${currencySelect.value}`, 20, y);
+  y += 7;
+  doc.text(`Tooling/fixtures: ${document.getElementById('tooling').value} ${currencySelect.value}`, 20, y);
+  y += 7;
+  doc.text(`Salvage value: ${document.getElementById('salvage').value} ${currencySelect.value}`, 20, y);
+  y += 7;
+  doc.text(`Economic life: ${document.getElementById('life').value} years`, 20, y);
+  y += 7;
+  doc.text(`Interest rate: ${document.getElementById('interest').value}%`, 20, y);
+  y += 7;
+  doc.text(`Insurance rate: ${document.getElementById('insurance').value}%`, 20, y);
+  y += 7;
+  doc.text(`Rent: ${document.getElementById('rent').value} ${currencySelect.value}/${document.getElementById('rentPeriod').value === 'monthly' ? 'sq.ft/mo' : 'sq.ft/yr'}`, 20, y);
+  y += 7;
+  doc.text(`Floor area: ${document.getElementById('area').value} sq.ft`, 20, y);
+  y += 7;
+  doc.text(`Common area factor: ${document.getElementById('caf').value}%`, 20, y);
+  
+  doc.addPage();
+  doc.setFontSize(14);
+  doc.text('Results', 105, 15, { align: 'center' });
+  doc.setFontSize(12);
+  
+  y = 25;
+  doc.text('Cost Breakdown:', 14, y);
+  y += 10;
+  
+  doc.setFontSize(10);
+  doc.text('Fixed Costs (Annual):', 20, y);
+  y += 7;
+  doc.text(`Depreciation: ${document.getElementById('kDep').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Interest: ${document.getElementById('kInt').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Insurance: ${document.getElementById('kIns').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Space: ${document.getElementById('kSpace').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Maintenance: ${document.getElementById('kMaint').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Spares & Repairs: ${document.getElementById('kSpares').textContent}`, 25, y);
+  y += 7;
+  doc.text(`People: ${document.getElementById('kPeople').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Overheads: ${document.getElementById('kOH').textContent}`, 25, y);
+  
+  y += 10;
+  doc.text('Variable Costs (Hourly):', 20, y);
+  y += 7;
+  doc.text(`Power: ${document.getElementById('kPower').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Compressed Air: ${document.getElementById('kAir').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Cooling: ${document.getElementById('kCool').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Other Utilities: ${document.getElementById('kOtherUtil').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Tools: ${document.getElementById('kTools').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Coolant: ${document.getElementById('kCoolant').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Shop Supplies: ${document.getElementById('kSupplies').textContent}`, 25, y);
+  
+  y += 10;
+  doc.text('Time Calculations:', 20, y);
+  y += 7;
+  doc.text(`Calendar Hours: ${document.getElementById('kCalHrs').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Net Calendar Hours: ${document.getElementById('kNetCal').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Available Hours: ${document.getElementById('kAvail').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Runtime Hours: ${document.getElementById('kRuntime').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Effective Good Hours: ${document.getElementById('kEGH').textContent}`, 25, y);
+  
+  y += 10;
+  doc.text('Summary:', 20, y);
+  y += 7;
+  doc.setFontSize(12);
+  doc.text(`Total Machine Hour Rate: ${document.getElementById('hdrMhr').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Fixed Cost Component: ${document.getElementById('hdrFixed').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Variable Cost Component: ${document.getElementById('hdrVar').textContent}`, 25, y);
+  y += 7;
+  doc.text(`OEE: ${document.getElementById('oee').textContent}`, 25, y);
+  y += 7;
+  doc.text(`Capacity Utilization: ${document.getElementById('capUtil').textContent}`, 25, y);
+  
+  doc.save('machine_hour_rate.pdf');
+});
+
+// Add these helper functions at the top of your script
+function formatNumber(number) {
+  return number.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function formatCurrency(amount, currencySymbol) {
+  if (isNaN(amount)) amount = 0;
+  const hasDecimals = amount % 1 !== 0;
+  const formatted = hasDecimals 
+    ? amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')
+    : amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${currencySymbol}${formatted}`;
+}
+
+// Calculation function
+function calculate() {
+
+
+  const days = parseFloat(document.getElementById('days').value) || 0;
+  const shifts = parseFloat(document.getElementById('shifts').value) || 0;
+  const hrsShift = parseFloat(document.getElementById('hrsShift').value) || 0;
+  const pm = parseFloat(document.getElementById('pm').value) || 0;
+  const setup = parseFloat(document.getElementById('setup').value) || 0;
+  const breaks = parseFloat(document.getElementById('breaks').value) || 0;
+  const util = parseFloat(document.getElementById('util').value) || 0;
+  const perf = parseFloat(document.getElementById('perf').value) || 0;
+  const qual = parseFloat(document.getElementById('qual').value) || 0;
+  
+  const price = parseFloat(document.getElementById('price').value) || 0;
+  const tooling = parseFloat(document.getElementById('tooling').value) || 0;
+  const salvage = parseFloat(document.getElementById('salvage').value) || 0;
+  const life = parseFloat(document.getElementById('life').value) || 1;
+  const interest = parseFloat(document.getElementById('interest').value) || 0;
+  const insurance = parseFloat(document.getElementById('insurance').value) || 0;
+  
+  const rent = parseFloat(document.getElementById('rent').value) || 0;
+  const rentPeriod = document.getElementById('rentPeriod').value;
+  const area = parseFloat(document.getElementById('area').value) || 0;
+  const caf = parseFloat(document.getElementById('caf').value) || 0;
+  
+  const maintPct = parseFloat(document.getElementById('maintPct').value) || 0;
+  const spares = parseFloat(document.getElementById('spares').value) || 0;
+  const sparesPeriod = document.getElementById('sparesPeriod').value;
+  
+  const kw = parseFloat(document.getElementById('kw').value) || 0;
+  const lf = parseFloat(document.getElementById('lf').value) || 0;
+  const tariff = parseFloat(document.getElementById('tariff').value) || 0;
+  const air = parseFloat(document.getElementById('air').value) || 0;
+  const airRate = parseFloat(document.getElementById('airRate').value) || 0;
+  const coolKwh = parseFloat(document.getElementById('coolKwh').value) || 0;
+  const otherUtil = parseFloat(document.getElementById('otherUtil').value) || 0;
+  const otherUtilPeriod = document.getElementById('otherUtilPeriod').value;
+  
+  const tools = parseFloat(document.getElementById('tools').value) || 0;
+  const toolsPeriod = document.getElementById('toolsPeriod').value;
+  const coolant = parseFloat(document.getElementById('coolant').value) || 0;
+  const coolantPeriod = document.getElementById('coolantPeriod').value;
+  const supplies = parseFloat(document.getElementById('supplies').value) || 0;
+  const suppliesPeriod = document.getElementById('suppliesPeriod').value;
+  
+  const ops = parseFloat(document.getElementById('ops').value) || 0;
+  const opsCost = parseFloat(document.getElementById('opsCost').value) || 0;
+  const opsCostPeriod = document.getElementById('opsCostPeriod').value;
+  const help = parseFloat(document.getElementById('help').value) || 0;
+  const helpCost = parseFloat(document.getElementById('helpCost').value) || 0;
+  const helpCostPeriod = document.getElementById('helpCostPeriod').value;
+  const supAlloc = parseFloat(document.getElementById('supAlloc').value) || 0;
+  const supAllocPeriod = document.getElementById('supAllocPeriod').value;
+  const qaAlloc = parseFloat(document.getElementById('qaAlloc').value) || 0;
+  const qaAllocPeriod = document.getElementById('qaAllocPeriod').value;
+  const adminOH = parseFloat(document.getElementById('adminOH').value) || 0;
+  const adminOHPeriod = document.getElementById('adminOHPeriod').value;
+  const it = parseFloat(document.getElementById('it').value) || 0;
+  const itPeriod = document.getElementById('itPeriod').value;
+  const safety = parseFloat(document.getElementById('safety').value) || 0;
+  const safetyPeriod = document.getElementById('safetyPeriod').value;
+  
+  // Time calculations
+  const calHrs = days * shifts * hrsShift;
+  const netCal = calHrs * (1 - pm / 100);
+  const availHrs = netCal * (1 - setup / 100) * (1 - breaks / 100);
+  const runtimeHrs = availHrs * util / 100;
+  const egh = runtimeHrs * perf / 100 * qual / 100;
+  
+  // Fixed costs (annual)
+  const dep = (price + tooling - salvage) / life;
+  const int = (price + tooling + salvage) / 2 * interest / 100;
+  const ins = (price + tooling) * insurance / 100;
+  const space = (rentPeriod === 'monthly' ? rent * 12 : rent) * area * (1 + caf / 100);
+  const maint = price * maintPct / 100;
+  const annualSpares = sparesPeriod === 'hourly' ? spares * runtimeHrs : spares;
+  
+  // People costs
+  const annualOpsCost = opsCostPeriod === 'hourly' ? opsCost * runtimeHrs : opsCost;
+  const annualHelpCost = helpCostPeriod === 'hourly' ? helpCost * runtimeHrs : helpCost;
+  const annualSupAlloc = supAllocPeriod === 'hourly' ? supAlloc * runtimeHrs : supAlloc;
+  const annualQaAlloc = qaAllocPeriod === 'hourly' ? qaAlloc * runtimeHrs : qaAlloc;
+  const annualAdminOH = adminOHPeriod === 'hourly' ? adminOH * runtimeHrs : adminOH;
+  const annualIt = itPeriod === 'hourly' ? it * runtimeHrs : it;
+  const annualSafety = safetyPeriod === 'hourly' ? safety * runtimeHrs : safety;
+  
+  const peopleCost = ops * annualOpsCost + help * annualHelpCost + annualSupAlloc + annualQaAlloc;
+  const overheads = annualAdminOH + annualIt + annualSafety;
+  
+  // Variable costs (hourly)
+  const power = kw * lf / 100 * tariff;
+  const compressedAir = air * airRate;
+  const cooling = coolKwh * tariff;
+  const hourlyOtherUtil = otherUtilPeriod === 'annual' ? otherUtil / runtimeHrs : otherUtil;
+  const hourlyTools = toolsPeriod === 'annual' ? tools / runtimeHrs : tools;
+  const hourlyCoolant = coolantPeriod === 'annual' ? coolant / runtimeHrs : coolant;
+  const hourlySupplies = suppliesPeriod === 'annual' ? supplies / runtimeHrs : supplies;
+  
+  // Machine hour rate
+  const fixedPerEgh = (dep + int + ins + space + maint + annualSpares + peopleCost + overheads) / egh;
+  const varPerEgh = (power + compressedAir + cooling + hourlyOtherUtil + hourlyTools + hourlyCoolant + hourlySupplies) * runtimeHrs / egh;
+  const mhr = fixedPerEgh + varPerEgh;
+  
+  // OEE
+  // Correct calculation:
+  const oee = (util / 100) * (perf / 100) * (qual / 100); // Result as decimal (0.76636)
+  // Then when displaying:
+  document.getElementById('oee').textContent = `${(oee * 100).toFixed(1)}%`; // Shows "76.6%"
+  const capUtil = egh / calHrs * 100;
+  
+  // Cost distribution
+  const totalFixed = dep + int + ins + space + maint + annualSpares + peopleCost + overheads;
+  const totalVar = (power + compressedAir + cooling + hourlyOtherUtil + hourlyTools + hourlyCoolant + hourlySupplies) * runtimeHrs;
+  const totalCap = dep + int + ins;
+  const totalEnergy = (power + compressedAir + cooling) * runtimeHrs;
+  const totalLabor = peopleCost;
+  const totalOther = totalFixed + totalVar - totalCap - totalEnergy - totalLabor;
+  
+// Update UI - Time values with commas
+document.getElementById('kCalHrs').textContent = `${formatNumber(calHrs)} hours`;
+document.getElementById('kNetCal').textContent = `${formatNumber(netCal)} hours`;
+document.getElementById('kAvail').textContent = `${formatNumber(availHrs)} hours`;
+document.getElementById('kRuntime').textContent = `${formatNumber(runtimeHrs)} hours`;
+document.getElementById('kEGH').textContent = `${formatNumber(egh)} hours`;
+
+// Currency values with commas
+document.getElementById('kDep').textContent = formatCurrency(dep, currencySymbols[currencySelect.value]);
+document.getElementById('kInt').textContent = formatCurrency(int, currencySymbols[currencySelect.value]);
+document.getElementById('kIns').textContent = formatCurrency(ins, currencySymbols[currencySelect.value]);
+document.getElementById('kSpace').textContent = formatCurrency(space, currencySymbols[currencySelect.value]);
+document.getElementById('kMaint').textContent = formatCurrency(maint, currencySymbols[currencySelect.value]);
+document.getElementById('kSpares').textContent = formatCurrency(annualSpares, currencySymbols[currencySelect.value]);
+document.getElementById('kPeople').textContent = formatCurrency(peopleCost, currencySymbols[currencySelect.value]);
+document.getElementById('kOH').textContent = formatCurrency(overheads, currencySymbols[currencySelect.value]);
+
+// Decimal currency values
+document.getElementById('kPower').textContent = formatCurrency(power, currencySymbols[currencySelect.value]);
+document.getElementById('kAir').textContent = formatCurrency(compressedAir, currencySymbols[currencySelect.value]);
+document.getElementById('kCool').textContent = formatCurrency(cooling, currencySymbols[currencySelect.value]);
+document.getElementById('kOtherUtil').textContent = formatCurrency(hourlyOtherUtil, currencySymbols[currencySelect.value]);
+document.getElementById('kTools').textContent = formatCurrency(hourlyTools, currencySymbols[currencySelect.value]);
+document.getElementById('kCoolant').textContent = formatCurrency(hourlyCoolant, currencySymbols[currencySelect.value]);
+document.getElementById('kSupplies').textContent = formatCurrency(hourlySupplies, currencySymbols[currencySelect.value]);
+
+// Header values
+document.getElementById('hdrMhr').textContent = formatCurrency(mhr, currencySymbols[currencySelect.value]);
+document.getElementById('hdrFixed').textContent = formatCurrency(fixedPerEgh, currencySymbols[currencySelect.value]);
+document.getElementById('hdrVar').textContent = formatCurrency(varPerEgh, currencySymbols[currencySelect.value]);
+
+// Percentage values (unchanged)
+document.getElementById('oee').textContent = `${(oee * 100).toFixed(1)}%`;
+document.getElementById('oeeUtil').textContent = `${util.toFixed(1)}%`;
+document.getElementById('oeePerf').textContent = `${perf.toFixed(1)}%`;
+document.getElementById('oeeQual').textContent = `${qual.toFixed(1)}%`;
+
+// Capacity values with commas
+document.getElementById('capUtil').textContent = `${capUtil.toFixed(1)}%`;
+document.getElementById('capCal').textContent = `${formatNumber(calHrs)} hours`;
+document.getElementById('capEff').textContent = `${formatNumber(egh)} hours`;
+
+// Cost distribution percentages (unchanged)
+document.getElementById('costFixed').textContent = `${(fixedPerEgh / mhr * 100).toFixed(1)}%`;
+document.getElementById('costVar').textContent = `${(varPerEgh / mhr * 100).toFixed(1)}%`;
+document.getElementById('costCap').textContent = `${((dep + int + ins) / totalFixed * 100).toFixed(1)}% of fixed`;
+document.getElementById('costEnergy').textContent = `${((power + compressedAir + cooling) * runtimeHrs / totalVar * 100).toFixed(1)}% of variable`;
+document.getElementById('costLabor').textContent = `${(peopleCost / totalFixed * 100).toFixed(1)}% of fixed`;
+document.getElementById('costOther').textContent = `${(totalOther / (totalFixed + totalVar) * 100).toFixed(1)}% of total`;
+
+// Update header summary cards
+document.getElementById('hdrOee').textContent = document.getElementById('oee').textContent;
+document.getElementById('hdrCapUtil').textContent = document.getElementById('capUtil').textContent;
+
+// Event listeners
+document.querySelectorAll('input[type="number"]').forEach(input => {
+  input.addEventListener('input', calculate);
+  input.addEventListener('change', calculate);
+});
+
+document.querySelectorAll('select').forEach(select => {
+  select.addEventListener('change', calculate);
+});
+
+}
+
+// Initial calculation
+calculate();
+</script>
+</body>
+</html>
